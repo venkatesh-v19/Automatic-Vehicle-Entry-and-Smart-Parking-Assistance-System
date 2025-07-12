@@ -1,0 +1,40 @@
+#include <Servo.h>
+
+#define trigPin 7
+#define echoPin 8
+#define servoPin 9
+#define ledPin 10
+
+Servo gateServo;
+
+void setup() {
+    Serial.begin(9600);
+    pinMode(trigPin, OUTPUT);
+    pinMode(echoPin, INPUT);
+    pinMode(ledPin, OUTPUT);
+    gateServo.attach(servoPin);
+    gateServo.write(0); // Gate closed initially
+}
+
+void loop() {
+    // Measure distance
+    digitalWrite(trigPin, LOW);
+    delayMicroseconds(2);
+    digitalWrite(trigPin, HIGH);
+    delayMicroseconds(10);
+    digitalWrite(trigPin, LOW);
+    
+    long duration = pulseIn(echoPin, HIGH);
+    float distance = (duration * 0.034) / 2; // cm
+
+    if (distance < 10) { // Vehicle detected
+        Serial.println("Vehicle detected!");
+        gateServo.write(90); // Open gate
+        digitalWrite(ledPin, HIGH); // Turn on LED
+        delay(5000); // Keep gate open for 5 seconds
+        gateServo.write(0); // Close gate
+        digitalWrite(ledPin, LOW); // Turn off LED
+    }
+
+    delay(1000); // Delay between measurements
+}
