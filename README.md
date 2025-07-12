@@ -96,12 +96,17 @@ This project automates vehicle access control at gates (e.g., parking lots, corp
 
 ## 📷 Screenshots
 
-> 🖼️ Number Plate Detection  
-> 🖼️ Servo-based Gate Opening  
-> 🖼️ Real-time LCD Output  
-> 🖼️ System Prototype Top View  
+> 🖼️ Number Plate Detection
+![Alt Text](assets/hardRes1.jpg)
 
-(📎 Add screenshots or GIFs to your GitHub repository in `/assets` and embed here)
+> 🖼️ Servo-based Gate Opening
+![Alt Text](assets/hardRes3.jpg)
+
+> 🖼️ Real-time LCD Output
+![Alt Text](assets/hardRes4.jpg)
+
+> 🖼️ System Prototype Top View
+![Alt Text](assets/hardRes5.jpg)
 
 ---
 
