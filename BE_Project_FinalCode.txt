@@ -1,0 +1,92 @@
+import requests
+import os
+import json
+import time
+import sqlite3
+import RPi.GPIO as GPIO
+from picamera2 import Picamera2
+
+# Servo Setup
+SERVO_PIN = 18  # Change this as per your wiring
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(SERVO_PIN, GPIO.OUT)
+
+servo = GPIO.PWM(SERVO_PIN, 50)  # 50Hz frequency
+servo.start(2.5)  # Set to neutral position
+print("[INFO] Servo initialized and set to neutral position.")
+
+def rotate_servo():
+    print("[INFO] Rotating Servo: Moving to 90 degrees")
+    servo.ChangeDutyCycle(7.5)  # Move servo to 90 degrees
+    time.sleep(1)
+    servo.ChangeDutyCycle(2.5)  # Reset to avoid jitter
+    print("[INFO] Servo reset to neutral position.")
+
+# Initialize Raspberry Pi Camera
+picam2 = Picamera2()
+picam2.configure(picam2.create_still_configuration())
+
+print("[INFO] Starting camera...")
+picam2.start()
+time.sleep(3)  # Allow camera to adjust properly
+print("[INFO] Camera started and ready.")
+
+image_path = "captured_image.jpg"
+try:
+    print("[INFO] Capturing image...")
+    picam2.capture_file(image_path)
+    picam2.stop()
+    print(f"[SUCCESS] Image captured: {image_path}")
+
+    if not os.path.exists(image_path):
+        raise Exception("[ERROR] Image capture failed.")
+
+    url = "https://api.vehicledatabases.com/licenseplate-ocr"
+    with open(image_path, 'rb') as img_file:
+        files = {'file': (image_path, img_file, 'image/jpeg')}
+        headers = {'x-AuthKey': 'a48496ce0d4511f095a80242ac120002'}
+
+        print("[INFO] Sending image for OCR processing...")
+        response = requests.post(url, headers=headers, files=files)
+        print("[INFO] OCR API request completed.")
+
+        # Parse the response and check plate number
+        try:
+            response_data = response.json()
+            if response_data.get("status") == "success":
+                plate = response_data.get("data", {}).get("plate", "Unknown").replace(" ", "").lower()
+                print(f"[SUCCESS] License Plate Detected: {plate}")
+
+                # Check plate in SQLite database
+                try:
+                    conn = sqlite3.connect("authorized_plates.db")
+                    cursor = conn.cursor()
+
+                    cursor.execute("SELECT plate FROM authorized_vehicles WHERE plate = ?", (plate,))
+                    result = cursor.fetchone()
+                    conn.close()
+
+                    if result:
+                        print("[ACCESS GRANTED] License plate recognized. Rotating servo...")
+                        rotate_servo()
+                    else:
+                        print("[ACCESS DENIED] Unauthorized vehicle detected.")
+                except sqlite3.Error as e:
+                    print(f"[DB ERROR] {e}")
+
+
+            else:
+                print("[ERROR] Failed to retrieve license plate data from API.")
+
+        except json.JSONDecodeError:
+            print("[ERROR] API Response is not in valid JSON format.")
+
+except Exception as e:
+    print(f"[EXCEPTION] {e}")
+
+finally:
+    # Cleanup GPIO
+    print("[INFO] Cleaning up GPIO and resetting system...")
+    servo.stop()
+    GPIO.cleanup()
+    print("[INFO] System shutdown complete.")
